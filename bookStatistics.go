@@ -1,11 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,21 +13,10 @@ import (
 	pdf "github.com/unidoc/unidoc/pdf/model"
 )
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Printf("Usage: go run count-words.go input.pdf\n")
-		os.Exit(1)
-	}
-
-	inputPath := os.Args[1]
-	startTime := time.Now()
-	err := countNewWordsByPage(inputPath)
-	executionTime := time.Since(startTime)
-	fmt.Printf("Execution time -> %s", executionTime)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
-	}
+type PageNewWords struct {
+	NumPage      int
+	NumNewWords  uint
+	ListNewWords []string
 }
 
 func checkErr(err error) {
@@ -36,11 +25,16 @@ func checkErr(err error) {
 	}
 }
 
-func countNewWordsByPage(inputPath string) error {
+// Function that analyses the data of a book
+func countNewWordsByPage(inputPath string) (map[string]int, []PageNewWords, error) {
+	// Map with the form word:appearances_in_the_book
 	mapWordCount := make(map[string]int)
+	// Slice with the data analysis of every page
+	var pagesNewWords []PageNewWords
+
 	f, err := os.Open(inputPath)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	defer f.Close()
 
@@ -54,34 +48,21 @@ func countNewWordsByPage(inputPath string) error {
 		checkErr(err)
 	}
 
-	numPages, err := pdfReader.GetNumPages()
+	totalPages, err := pdfReader.GetNumPages()
 	checkErr(err)
 
-	startTimeOuterLoop := time.Now()
-	for i := 1; i <= numPages; i++ {
-		startTimePageLoop := time.Now()
-		newWordsInPage, countWordsPage, err := countNewWordsOfPage(pdfReader, i, mapWordCount)
+	for numPage := 1; numPage <= totalPages; numPage++ {
+		err := countNewWordsOfPage(pdfReader, numPage, mapWordCount, &pagesNewWords)
 		checkErr(err)
-
-		executionTimePageLoop := time.Since(startTimePageLoop)
-		fmt.Println("Page " +
-			strconv.Itoa(i) + " - " +
-			strconv.Itoa(newWordsInPage) +
-			" new words of " +
-			strconv.Itoa(countWordsPage) +
-			" (Execution time regular loop-> " +
-			executionTimePageLoop.String() +
-			")")
 	}
-	executionTimeOuterLoop := time.Since(startTimeOuterLoop)
-	fmt.Println("Execution time outer loop -> " + executionTimeOuterLoop.String())
-	return nil
+
+	return mapWordCount, pagesNewWords, nil
 }
 
-func countNewWordsOfPage(pdfReader *pdf.PdfReader, currentPageNum int, mapWordCount map[string]int) (int, int, error) {
-	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
+// Function that counts the new words that appear in a book page
+func countNewWordsOfPage(pdfReader *pdf.PdfReader, currentPageNum int, mapWordCount map[string]int, pagesNewWords *[]PageNewWords) error {
+	reg, err := regexp.Compile("[^a-zA-Z]+")
 	checkErr(err)
-	newWordsInPage := 0
 
 	currentPage, err := pdfReader.GetPage(currentPageNum)
 	checkErr(err)
@@ -91,25 +72,66 @@ func countNewWordsOfPage(pdfReader *pdf.PdfReader, currentPageNum int, mapWordCo
 
 	pageContentStr := ""
 	for _, cstream := range contentStreams {
-		pageContentStr += cstream
+		pageContentStr += " " + cstream
 	}
 
 	cstreamParser := pdfcontent.NewContentStreamParser(pageContentStr)
 
-	txt, err := cstreamParser.ExtractText()
+	rawText, err := cstreamParser.ExtractText()
 	checkErr(err)
 
-	cleanedWords := reg.ReplaceAllString(strings.ToLower(txt), " ")
+	cleanedWords := reg.ReplaceAllString(strings.ToLower(rawText), " ")
 	arrayWords := strings.Fields(cleanedWords)
+
+	pageNewWords := PageNewWords{NumPage: currentPageNum, NumNewWords: 0, ListNewWords: []string{}}
 
 	for _, word := range arrayWords {
 		if mapWordCount[word] == 0 {
-			mapWordCount[word]++
-			newWordsInPage++
-		} else {
-			mapWordCount[word]++
+			pageNewWords.NumNewWords = pageNewWords.NumNewWords + 1
+			pageNewWords.ListNewWords = append(pageNewWords.ListNewWords, word)
 		}
+		mapWordCount[word]++
+	}
+	*pagesNewWords = append(*pagesNewWords, pageNewWords)
+
+	return nil
+}
+
+// Returns the name of the book from the file path
+func getBookNameOfInputPath(inputPath string) string {
+	inputPathSplitted := strings.Split(inputPath, "/")
+	bookName := strings.Split(inputPathSplitted[len(inputPathSplitted)-1], ".")[0]
+	return bookName
+}
+
+func main() {
+	if len(os.Args) < 2 {
+		fmt.Printf("Usage: go run bookStatistics.go input.pdf\n")
+		os.Exit(1)
+	}
+	inputPath := os.Args[1]
+	bookName := getBookNameOfInputPath(inputPath)
+
+	// Process the books data
+	startTime := time.Now()
+	mapWordCount, pagesNewWords, err := countNewWordsByPage(inputPath)
+	executionTime := time.Since(startTime)
+	fmt.Printf("Execution time -> %s\n", executionTime)
+
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
 	}
 
-	return newWordsInPage, len(arrayWords), nil
+	// Write the results to files
+	pagesNewWordsJSON, err := json.Marshal(pagesNewWords)
+	wordsCountJSON, err := json.Marshal(mapWordCount)
+
+	f1, err := os.Create("words-list-by-page-" + strings.ToUpper(bookName) + ".json")
+	defer f1.Close()
+	f1.Write(pagesNewWordsJSON)
+
+	f2, err := os.Create("words-list-count-" + strings.ToUpper(bookName) + ".json")
+	defer f2.Close()
+	f2.Write(wordsCountJSON)
 }
