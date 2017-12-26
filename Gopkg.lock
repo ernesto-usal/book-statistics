@@ -2,6 +2,36 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/gin-contrib/sse"
+  packages = ["."]
+  revision = "22d885f9ecc78bf4ee5d72b937e4bbcdc58e8cae"
+
+[[projects]]
+  name = "github.com/gin-gonic/gin"
+  packages = [".","binding","render"]
+  revision = "d459835d2b077e44f7c9b453505ee29881d5d12d"
+  version = "v1.2"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/golang/protobuf"
+  packages = ["proto"]
+  revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
+
+[[projects]]
+  name = "github.com/mattn/go-isatty"
+  packages = ["."]
+  revision = "0360b2af4f38e8d38c7fce2a9f4e702702d73a39"
+  version = "v0.0.3"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/ugorji/go"
+  packages = ["codec"]
+  revision = "7bdfbc68187228a730beb5b825508079b9e757b6"
+
+[[projects]]
   name = "github.com/unidoc/unidoc"
   packages = ["common","common/license","pdf/contentstream","pdf/core","pdf/model","pdf/model/fonts","pdf/model/sampling","pdf/model/textencoding","pdf/ps"]
   revision = "144fa3f75be7cab29ecd8d3bfb9673fcc649f372"
@@ -13,9 +43,27 @@
   packages = ["tiff/lzw"]
   revision = "e5db4c466346ada62f27934dab20e4b6f6bda285"
 
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = ["unix"]
+  revision = "83801418e1b59fb1880e363299581ee543af32ca"
+
+[[projects]]
+  name = "gopkg.in/go-playground/validator.v8"
+  packages = ["."]
+  revision = "5f1438d3fca68893a817e4a66806cea46a9e4ebf"
+  version = "v8.18.2"
+
+[[projects]]
+  branch = "v2"
+  name = "gopkg.in/yaml.v2"
+  packages = ["."]
+  revision = "287cf08546ab5e7e37d55a84f7ed3fd1db036de5"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b4fa1b4d03dc581bb2c8b82358c09b948af0d4b38dbd666009b9f1b03bb7566b"
+  inputs-digest = "b7a4761ea407176b5e3a6f52f2dbea4a6dace96a1e67c24cbaf86471ed73e776"
   solver-name = "gps-cdcl"
   solver-version = 1
